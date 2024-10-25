@@ -3,6 +3,7 @@ package edu.cmu.cs.cs214.rec08.map;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import net.jcip.annotations.ThreadSafe;
 
@@ -26,6 +27,8 @@ public class SimpleHashMap<K, V> {
 
     private final int numBuckets;
 
+    private final static List<ReentrantReadWriteLock> lockList = new ArrayList<>();;
+
     /**
      * Constructs a new hash map with a given number of buckets.
      */
@@ -39,7 +42,9 @@ public class SimpleHashMap<K, V> {
         table = new ArrayList<>(this.numBuckets);
         for (int i = 0; i < numBuckets; i++) {
             table.add(new LinkedList<>());
+            lockList.add(new ReentrantReadWriteLock());
         }
+
     }
 
     /**
@@ -55,16 +60,20 @@ public class SimpleHashMap<K, V> {
         if (key == null)
             throw new NullPointerException("Key can't be null.");
 
+        lockList.get(hash(key)).writeLock().lock();
         List<Entry<K,V>> bucket = table.get(hash(key));
         for (Entry<K, V> e : bucket) {
             if (e.key.equals(key)) {
                 V result = e.value;
                 e.value = value;
+                lockList.get(hash(key)).readLock().unlock();
                 return result;
             }
         }
 
         bucket.add(new Entry<>(key, value));
+        lockList.get(hash(key)).writeLock().unlock();
+
         return null;
     }
 
@@ -75,12 +84,16 @@ public class SimpleHashMap<K, V> {
      * @return The value for the given key, or null if the key is not present.
      */
     public V get(K key) {
+        lockList.get(hash(key)).readLock().lock();
         List<Entry<K,V>> bucket = table.get(hash(key));
         for (Entry<K, V> e : bucket) {
             if (e.key.equals(key)) {
+                lockList.get(hash(key)).readLock().unlock();
                 return e.value;
             }
         }
+        lockList.get(hash(key)).readLock().unlock();
+
         return null;
     }
 
