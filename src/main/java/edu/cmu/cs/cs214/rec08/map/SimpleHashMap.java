@@ -60,6 +60,7 @@ public class SimpleHashMap<K, V> {
         if (key == null)
             throw new NullPointerException("Key can't be null.");
 
+        //synchronized(bucket){}  //can also use bucket as lock
         lockList.get(hash(key)).writeLock().lock();
         List<Entry<K,V>> bucket = table.get(hash(key));
         for (Entry<K, V> e : bucket) {
